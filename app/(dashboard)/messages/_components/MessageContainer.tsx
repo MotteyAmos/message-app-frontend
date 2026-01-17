@@ -1,9 +1,17 @@
+"use client"
 import Image from "next/image";
 import React, { useEffect } from "react";
 import MessageInputBox from "@/components/message/MessageInputBox";
 // import { useSubscription } from "@apollo/client";
-import { GET_CHATROOM_MESSAGES_SUBSCRIPTION, GET_SINGLE_CHATROOM } from "@/lib/apolloClient/clientQuerys";
+import {
+  GET_CHATROOM_MESSAGES_SUBSCRIPTION,
+  GET_SINGLE_CHATROOM,
+} from "@/lib/apolloClient/clientQuerys";
 import { useQuery } from "@apollo/client/react";
+import apolloClient, { chatRoomsVar, loginUserVar } from "@/lib/apolloClient/apolloClient";
+import { IChatRoomMessages } from "@/lib/types/generalTyps";
+ import { useReactiveVar } from "@apollo/client/react";
+
 const messages = [
   {
     id: 1,
@@ -110,36 +118,55 @@ const messages = [
   },
 ];
 
-interface props{
-    roomId:string
-}
-export default function MessageContainer({roomId}:props) {
+
+export default function MessageContainer() {
   //   const { data, loading } = useSubscription(GET_CHATROOM_MESSAGES_SUBSCRIPTION , {
   //   variables: { roomId },
   // });
-
-   const { subscribeToMore, ...result } = useQuery(GET_SINGLE_CHATROOM, {
-    variables: { roomId},
+  const roomId = useReactiveVar(chatRoomsVar);
+const selfId = useReactiveVar(loginUserVar);
+  const { subscribeToMore, ...result } = useQuery(GET_SINGLE_CHATROOM, {
+    variables: { roomId },
   });
 
+  const _result = result.data as IChatRoomMessages;
+  console.log("Messages for room:",  _result);
 
   useEffect(() => {
     // This assumes you want to wait to start the subscription
     // after the query has loaded.
+    console.log('new data', result)
     if (result.data) {
       const unsubscribe = subscribeToMore({
-        document:GET_CHATROOM_MESSAGES_SUBSCRIPTION,
-        variables: {roomId },
+        document: GET_CHATROOM_MESSAGES_SUBSCRIPTION,
+        variables: { roomId },
         updateQuery: (prev, { subscriptionData }: any) => {
+      
+          const _prev = prev as IChatRoomMessages;
+          console.log("Prev data:",  _prev?.chatRoom);
           if (!subscriptionData.data) return prev;
 
           const newFeedItem = subscriptionData.data.messageCreated;
-          console.log("New message received via subscription:", newFeedItem);
-          // return Object.assign({}, prev, {
-          //   me: {
-          //     comments: [newFeedItem, ...prev.post.comments],
+              console.log("Subscription data received:", newFeedItem);
+          // console.log("subscriptionData:", subscriptionData);
+          // apolloClient.cache.modify({
+          //   id: "ROOT_QUERY",
+          //   fields: {
+          //     chatRoom(existingMessages = [], { readField}) {
+          //       // Only update the correct room
+          //       console.log("arrrrr", readField("id"))
+          //       // if (args.roomId !== roomId) return existingMessages;
+
+          //       return [...existingMessages,newFeedItem];
+          //     },
           //   },
           // });
+
+          return Object.assign({}, prev, {
+            
+            chatRoom: [newFeedItem, ... _prev?.chatRoom],
+            
+          });
         },
       });
       return () => {
@@ -151,19 +178,18 @@ export default function MessageContainer({roomId}:props) {
   return (
     <div className=" grow basis-9/13 min-h-[calc(100vh-15.5vh)] shrink flex flex-col relative  overflow-y-auto    ">
       <div className="flex grow flex-col-reverse basis-4/5   p-4 gap-3  ">
-     
-        {messages.map((msg) => (
+        {_result && _result?.chatRoom?.map((msg) => (
           <div
-            key={msg.id}
-            className={`flex ${
-              msg.isMine ? "justify-end" : "justify-start"
-            }`}
+            key={msg._id}
+            className={`flex ${msg.senderId === selfId ? "justify-end" : "justify-start"}`}
           >
             {/* Friend avatar (left side only) */}
-            {!msg.isMine && msg.image && (
-              <img
-                src={msg.image}
+            {(msg.senderId !== selfId) && (
+              <Image
+                src={"/person1.webp"}
                 alt="avatar"
+                height={80}
+                width={80}
                 className="w-8 h-8 rounded-full mr-2 self-end"
               />
             )}
@@ -171,35 +197,34 @@ export default function MessageContainer({roomId}:props) {
             {/* Message bubble */}
             <div
               className={`max-w-xs md:max-w-md px-4 py-2 rounded-2xl text-sm ${
-                msg.isMine
+                (msg.senderId === selfId)
                   ? "bg-blue-500 text-white rounded-br-none"
                   : "bg-white text-gray-800 rounded-bl-none"
               }`}
             >
-              <p>{msg.text}</p>
+              <p>{msg.content}</p>
 
               {/* Timestamp + status */}
               <div
                 className={`mt-1 text-[10px] flex justify-end gap-1 ${
-                  msg.isMine ? "text-blue-100" : "text-gray-400"
+                  (msg.senderId === selfId) ? "text-blue-100" : "text-gray-400"
                 }`}
               >
                 <span>
-                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                  {new Date(msg?.createdAt).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
-                {msg.isMine && <span>✓✓</span>}
+                {(msg.senderId === selfId) && <span>✓✓</span>}
               </div>
             </div>
           </div>
         ))}
-      
       </div>
 
       <div className="w-full basis-1/5 flex justify-center items-center">
-        <MessageInputBox />
+        <MessageInputBox roomId={roomId} />
       </div>
     </div>
   );

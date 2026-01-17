@@ -4,8 +4,10 @@ import {
   GET_NOT_FRIENDS,
 } from "@/lib/apolloClient/clientQuerys";
 import NotFriendCard from "./_components/FriendCard";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useReactiveVar } from "@apollo/client/react";
 import { INotfriends } from "@/lib/types/generalTyps";
+import { loginUserVar, notFriendsData as _notFriendsData } from "@/lib/apolloClient/apolloClient";
+import { useEffect } from "react";
 
 export interface IloginInUser {
   loggedInUser: {
@@ -14,17 +16,21 @@ export interface IloginInUser {
   };
 }
 export default function Page(){
-  const { data: loginUser } = useQuery(GET_LOGGED_IN_USER);
-  const _loginUser = loginUser as IloginInUser;
-const loginUserId = localStorage.getItem("loginUserId")
+
+  const loginUserId = useReactiveVar(loginUserVar);
+const _data = useReactiveVar<INotfriends["notFriends"]>(_notFriendsData);
 
   const { data, loading, refetch } = useQuery(GET_NOT_FRIENDS, {
     variables: {
-      userId: _loginUser?.loggedInUser?._id  || loginUserId,
+      userId:  loginUserId,
     },
   });
 
   const notFriendsData = data as INotfriends;
+
+  useEffect(() => {
+    _notFriendsData(notFriendsData?.notFriends || []);
+  }, [data]);
 
   
 
@@ -34,10 +40,10 @@ const loginUserId = localStorage.getItem("loginUserId")
   }
 
   return (
-    <div className="border top-21  z-200 right-0 flex-1/2  h-[calc(100%-5.4rem)]  overflow-y-auto">
-      {notFriendsData?.notFriends?.map((data, index) => {
+    <div className="border h-[calc(100%-5.4rem)]  overflow-y-auto">
+      {_data?.map((data, index) => {
         return <div key={index}>
-            <NotFriendCard username={data?.username} _id={data?._id} roomName={data?.username} profile={data?.profilepicture} refetch={refetch}/>
+            <NotFriendCard data={data} refetch={refetch}/>
         </div>;
       })}
      

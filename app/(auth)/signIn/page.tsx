@@ -21,7 +21,7 @@ import { useMutation } from "@apollo/client/react";
 import { LOGIN_USER } from "@/lib/apolloClient/clientMutations";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import apolloClient from "@/lib/apolloClient/apolloClient";
+import apolloClient, { loginUserVar } from "@/lib/apolloClient/apolloClient";
 import { GET_LOGGED_IN_USER } from "@/lib/apolloClient/clientQuerys";
 import { ILoginUser } from "@/lib/types/generalTyps";
 import { getErrorMessage } from "@/lib/apolloClient/ApolloErrorMessage";
@@ -60,7 +60,8 @@ export default function SignIn() {
       });
 
       const userData = data as ILoginUser;
-      localStorage.setItem("loginUserId", userData?.login?._id);
+      loginUserVar(userData?.login?._id);
+      
       apolloClient.writeQuery({
         query: GET_LOGGED_IN_USER,
         data: {

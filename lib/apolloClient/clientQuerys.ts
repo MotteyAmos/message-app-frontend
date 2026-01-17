@@ -19,12 +19,15 @@ export const GET_ALL_CHATROOMS = gql`
 `;
 
 export const GET_SINGLE_CHATROOM = gql`
-query ChatRoom($chatRoomRoomId2: ID!) {
-  chatRoom(roomId: $chatRoomRoomId2) {
+query ChatRoom($roomId: ID!) {
+  chatRoom(roomId: $roomId) {
     content
-    sender
+    senderId
+     _id
+     createdAt
   }
 }`;
+
 
 export const GET_CHATROOM_MESSAGES_SUBSCRIPTION = gql`
 subscription Subscription($roomId: ID!) {

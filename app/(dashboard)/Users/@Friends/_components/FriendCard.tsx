@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { IloginInUser } from "../../@NotFriends/page";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery, useReactiveVar } from "@apollo/client/react";
 import {
   GET_LOGGED_IN_USER,
   GET_NOT_FRIENDS,
@@ -12,47 +12,54 @@ import {
   REMOVE_A_FRIEND,
 } from "@/lib/apolloClient/clientMutations";
 import { toastError, toastSuccess } from "@/lib/utils";
-import { IRemoveUserResponse } from "@/lib/types/generalTyps";
+import { INotfriends, IRemoveUserResponse } from "@/lib/types/generalTyps";
 import { revalidateFriendsPath } from "@/lib/actions";
-
+import { loginUserVar } from "@/lib/apolloClient/apolloClient";
+import { notFriendsData as _notFriendsData } from "@/lib/apolloClient/apolloClient";
 
 interface IProps {
-  username: string;
-  _id: string;
-  profile?: string;
+ data: {
+    _id: string;
+    username: string;
+    profilepicture: string;
+};
   refetch: () => void;
 }
-export default function FriendCard({ username, _id, refetch }: IProps) {
-  const { data: loginUser } = useQuery(GET_LOGGED_IN_USER);
-  const _loginUser = loginUser as IloginInUser;
-  const loginUserId = localStorage.getItem("loginUserId");
+export default function FriendCard({ data, refetch }: IProps) {
+   const loginUserId = useReactiveVar(loginUserVar);
+  const notFriends = useReactiveVar<INotfriends["notFriends"]>(_notFriendsData);
 
-
-  const [removeAFriend, { data, loading, error }] = useMutation(
+  const [removeAFriend, { data:_, loading, error }] = useMutation(
     REMOVE_A_FRIEND,
     {
       variables: {
-        userId: _loginUser?.loggedInUser?._id || loginUserId,
-        user2Id: _id,
+        userId:  loginUserId,
+        user2Id: data._id,
       },
     }
   );
 
   const { refetch: refetchNotFreinds } = useQuery(GET_NOT_FRIENDS, {
     variables: {
-      userId: _loginUser?.loggedInUser?._id || loginUserId,
+      userId:  loginUserId,
     },
   });
 
+  const updateNotFriendsData = ()=>{
+
+      _notFriendsData([...notFriends, data]);
+  }
+
   const handleSubmit = async () => {
     try {
-      const { data } = await removeAFriend();
-      console.log(data);
-      const response = data as IRemoveUserResponse;
+      const { data:_data } = await removeAFriend();
+      const response = _data as IRemoveUserResponse;
+
+     updateNotFriendsData();
       toastSuccess(
         response?.removeUser?.message || "Congrat!!!, you guys are now friends"
       );
-      refetchNotFreinds();
+      
       refetch();
       await revalidateFriendsPath()
 
@@ -75,7 +82,7 @@ export default function FriendCard({ username, _id, refetch }: IProps) {
             className="rounded-full"
           />
         </div>
-        <div className="text-xl ">{username}</div>
+        <div className="text-xl ">{data.username}</div>
       </div>
 
       <div className="flex-1/2 justify-end flex">

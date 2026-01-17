@@ -4,6 +4,9 @@ import { ApolloClient, HttpLink, InMemoryCache,ApolloLink, gql } from "@apollo/c
 import { OperationTypeNode } from "graphql";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
 import { createClient } from "graphql-ws";
+import { makeVar } from "@apollo/client";
+import { Ifriends, INotfriends } from "../types/generalTyps";
+
 
 
 console.log(process.env.SERVER_URL)
@@ -41,7 +44,10 @@ const apolloClient = new ApolloClient({
 export default apolloClient;
 
 
+export const loginUserVar = makeVar("");
 
+export const chatRoomsVar = makeVar("");
 
+export const friendsData = makeVar<Ifriends["friends"]>([]);
 
-
+export const notFriendsData = makeVar<INotfriends["notFriends"]>([]);

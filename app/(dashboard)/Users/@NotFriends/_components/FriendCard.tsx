@@ -2,47 +2,54 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ADD_A_FRIEND } from "@/lib/apolloClient/clientMutations";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useMutation, useQuery, useReactiveVar } from "@apollo/client/react";
 import { GET_FRIENDS, GET_LOGGED_IN_USER } from "@/lib/apolloClient/clientQuerys";
 import { IloginInUser } from "../page";
 import { Spinner } from "@/components/ui/spinner";
 import { toastError, toastSuccess } from "@/lib/utils";
-import { revalidateFriendsPath } from "@/lib/actions";
+import { friendsData, loginUserVar } from "@/lib/apolloClient/apolloClient";
+import { Ifriends } from "@/lib/types/generalTyps";
 
 interface IProps {
-  username: string;
-  _id: string;
-  profile?: string;
-  roomName:string;
+ data: {
+    _id: string;
+    username: string;
+    profilepicture: string;
+};
+ 
   refetch: () => void;
 }
 
-export default function NotFriendCard({ username, _id, refetch,roomName }: IProps) {
-  const { data: loginUser } = useQuery(GET_LOGGED_IN_USER);
-  const _loginUser = loginUser as IloginInUser;
-  const loginUserId = localStorage.getItem("loginUserId");
+export default function NotFriendCard({ data, refetch }: IProps) {
+ const loginUserId = useReactiveVar(loginUserVar);
+ const friends = useReactiveVar<Ifriends["friends"]>(friendsData);
 
-  const [addAFriend, { data, loading, error }] = useMutation(ADD_A_FRIEND, {
+  const [addAFriend, { data:_, loading, error }] = useMutation(ADD_A_FRIEND, {
     variables: {
-      userId: _loginUser?.loggedInUser?._id || loginUserId,
-      user2Id: _id,
-      roomName
+      userId: loginUserId,
+      user2Id: data._id,
+      roomName: data.username,
     },
+    
   });
 
     const {  refetch:refetchFriends } = useQuery(GET_FRIENDS, {
       variables: {
-        userId: _loginUser?.loggedInUser?._id || loginUserId,
+        userId: loginUserId,
       },
     });
   
+     const updateFriendsData = ()=>{
+    
+          friendsData([...friends, data]);
+      }
 
   const handleSubmit = async () => {
     try {
-      const { data } = await addAFriend();
-      console.log(data);
-      toastSuccess(data?.message || "Congrat!!!, you guys are now friends");
-      refetchFriends()
+      const { data:_data } = await addAFriend();
+      console.log(_data);
+      toastSuccess(_data?.message || "Congrat!!!, you guys are now friends");
+      updateFriendsData()
       refetch();
 
     } catch (error) {
@@ -64,7 +71,7 @@ export default function NotFriendCard({ username, _id, refetch,roomName }: IProp
             className="rounded-full"
           />
         </div>
-        <div className="text-xl capitalize">{username}</div>
+        <div className="text-xl capitalize">{data?.username}</div>
       </div>
 
       <div className="flex-1/2 justify-end flex">
